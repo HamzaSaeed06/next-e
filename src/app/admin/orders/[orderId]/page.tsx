@@ -18,6 +18,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { getOrderById, updateOrderStatus } from '@/lib/services/orderService';
+import { createNotification } from '@/lib/services/notificationService';
 import { formatPrice, formatDate, toDate } from '@/utils/formatters';
 import type { Order } from '@/types';
 import toast from 'react-hot-toast';
@@ -51,6 +52,21 @@ export default function AdminOrderDetailPage() {
     });
   }, [orderId]);
 
+  const NOTIF_MESSAGES: Record<string, { title: string; body: string }> = {
+    confirmed: {
+      title: '✅ Order Confirmed!',
+      body: `Your order #${order?.id?.slice(0, 8).toUpperCase() || ''} has been confirmed and is being prepared.`,
+    },
+    shipped: {
+      title: '🚚 Order Shipped!',
+      body: `Your order #${order?.id?.slice(0, 8).toUpperCase() || ''} is on its way to you.`,
+    },
+    delivered: {
+      title: '📦 Order Delivered!',
+      body: `Your order #${order?.id?.slice(0, 8).toUpperCase() || ''} has been delivered. Please rate your items.`,
+    },
+  };
+
   const handleStatusUpdate = async () => {
     if (!order) return;
     const next = NEXT_STATUS[order.status];
@@ -70,6 +86,17 @@ export default function AdminOrderDetailPage() {
             }
           : prev
       );
+      // Send notification to the customer
+      const notifData = NOTIF_MESSAGES[next.status];
+      if (notifData && order.userId) {
+        await createNotification({
+          userId: order.userId,
+          type: 'order',
+          title: notifData.title,
+          body: notifData.body,
+          actionUrl: `/account/orders/${order.id}`,
+        }).catch(() => {});
+      }
       toast.success(`Order status updated to ${next.status}`);
     } catch {
       toast.error('Failed to update order status');

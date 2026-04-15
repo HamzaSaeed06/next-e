@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Heart, Star, ZoomIn, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import { useWishlistStore } from '@/store/wishlistStore';
 import { formatPrice, discountPercent } from '@/utils/formatters';
 import type { Product } from '@/types';
 import toast from 'react-hot-toast';
@@ -16,10 +17,11 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState(0);
   const { addItem } = useCartStore();
+  const { isWishlisted, toggleItem } = useWishlistStore();
+  const wishlisted = isWishlisted(product.id);
 
   const isFlashSale = product.isFlashSale && product.flashSalePrice;
   const displayPrice = isFlashSale ? product.flashSalePrice! : product.price;
@@ -99,14 +101,15 @@ export function ProductCard({ product }: ProductCardProps) {
           <button
             onClick={(e) => {
               e.preventDefault();
-              setIsWishlisted(!isWishlisted);
+              toggleItem(product);
+              toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist');
             }}
             className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur-md rounded shadow-sm text-gray-400 hover:text-red-500 transition-all hover:scale-105 active:scale-95"
             aria-label="Wishlist"
           >
             <Heart
               size={15}
-              className={isWishlisted ? 'text-red-500 fill-red-500' : ''}
+              className={wishlisted ? 'text-red-500 fill-red-500' : ''}
             />
           </button>
 

@@ -19,6 +19,7 @@ import {
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { signOut } from '@/lib/services/authService';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import toast from 'react-hot-toast';
 
 export function Navbar() {
@@ -109,6 +110,8 @@ export function Navbar() {
           >
             <Heart size={20} strokeWidth={1} />
           </Link>
+
+          <NotificationBell />
 
           <motion.button
             onClick={openCart}
