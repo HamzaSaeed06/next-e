@@ -5,8 +5,10 @@ const nextConfig: NextConfig = {
     '*.worf.replit.dev',
     '*.replit.dev',
     '*.kirk.replit.dev',
+    '*.riker.replit.dev',
     '*.replit.app',
-  ],
+    process.env.REPLIT_DEV_DOMAIN || '',
+  ].filter(Boolean),
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
