@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Heart, Loader2, Ruler, RotateCcw, ShieldCheck, Truck } from 'lucide-react';
+import { Heart, Loader2, Ruler, RotateCcw, ShieldCheck, Truck, Check } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import type { Product, StoreSettings } from '@/types';
 import { formatPrice } from '@/utils/formatters';
@@ -86,6 +86,8 @@ export function ProductDetailClient({
 
   const currentStock = activeVariant?.stock ?? product.stock;
 
+  const isHex = (val: string) => /^#([0-9A-Fa-f]{3}){1,2}$/.test(val.trim());
+
   return (
     <div className="flex flex-col gap-4">
 
@@ -152,17 +154,32 @@ export function ProductDetailClient({
 
       {/* Attribute Selectors */}
       {product.attributes && product.attributes.length > 0 && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {product.attributes.map((attr) => {
             const isColor = attr.name.toLowerCase() === 'color';
             const isSize = attr.name.toLowerCase() === 'size';
+            const selectedVal = selectedAttributes[attr.name];
+            const selectedIsHex = isColor && isHex(selectedVal);
 
             return (
               <div key={attr.name}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[12px] text-gray-800 font-bold">
-                    {attr.name}:{' '}
-                    <span className="font-normal text-gray-500">{selectedAttributes[attr.name]}</span>
+                {/* Attribute Label Row */}
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className="text-[12px] text-gray-800 font-bold flex items-center gap-2">
+                    {attr.name}:
+                    {isColor ? (
+                      <span className="flex items-center gap-1.5 font-normal text-gray-500">
+                        {selectedIsHex && (
+                          <span
+                            className="inline-block w-4 h-4 rounded-full border border-gray-300 shadow-sm"
+                            style={{ backgroundColor: selectedVal }}
+                          />
+                        )}
+                        <span className="text-[11px]">{selectedVal}</span>
+                      </span>
+                    ) : (
+                      <span className="font-normal text-gray-500">{selectedVal}</span>
+                    )}
                   </p>
                   {isSize && product.sizeGuide && Object.keys(product.sizeGuide).length > 0 && (
                     <button className="flex items-center gap-1 text-[11px] text-gray-500 underline hover:text-black">
@@ -171,40 +188,73 @@ export function ProductDetailClient({
                   )}
                 </div>
 
+                {/* Swatches / Pills */}
                 <div className="flex flex-wrap gap-2">
-                  {attr.values.map((val) => (
-                    <button
-                      key={val}
-                      onClick={() => updateAttribute(attr.name, val)}
-                      title={val}
-                      className={
-                        isColor
-                          ? `w-9 h-9 rounded-full border-2 transition-all flex items-center justify-center p-0.5 ${
-                              selectedAttributes[attr.name] === val ? 'border-black' : 'border-transparent hover:border-gray-300'
-                            }`
-                          : `px-3 py-2 min-w-[2.5rem] text-[12px] font-bold rounded border transition-all ${
-                              selectedAttributes[attr.name] === val
-                                ? 'bg-black text-white border-black'
-                                : 'bg-white text-gray-800 border-gray-200 hover:border-black'
-                            }`
-                      }
-                    >
-                      {isColor ? (
-                        <div
-                          className="w-full h-full rounded-full border border-gray-200"
-                          style={{ backgroundColor: val.toLowerCase().replace(/\s+/g, '') }}
-                        />
-                      ) : (
-                        val
-                      )}
-                    </button>
-                  ))}
+                  {attr.values.map((val) => {
+                    const valIsHex = isColor && isHex(val);
+                    const isSelected = selectedVal === val;
+
+                    if (isColor) {
+                      return (
+                        <button
+                          key={val}
+                          onClick={() => updateAttribute(attr.name, val)}
+                          title={val}
+                          className={`relative w-10 h-10 rounded-full transition-all focus:outline-none ${
+                            isSelected
+                              ? 'ring-2 ring-offset-2 ring-black'
+                              : 'ring-1 ring-gray-200 hover:ring-gray-400'
+                          }`}
+                          style={valIsHex ? { backgroundColor: val } : undefined}
+                        >
+                          {!valIsHex && (
+                            <div
+                              className="absolute inset-0 rounded-full"
+                              style={{ backgroundColor: val.toLowerCase().replace(/\s+/g, '') }}
+                            />
+                          )}
+                          {isSelected && (
+                            <span className="absolute inset-0 flex items-center justify-center">
+                              <Check
+                                size={14}
+                                className="drop-shadow-md"
+                                style={{ color: isColorDark(val) ? '#fff' : '#000' }}
+                              />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <button
+                        key={val}
+                        onClick={() => updateAttribute(attr.name, val)}
+                        className={`px-4 py-2 min-w-[2.75rem] text-[12px] font-bold rounded border transition-all ${
+                          isSelected
+                            ? 'bg-black text-white border-black'
+                            : 'bg-white text-gray-800 border-gray-200 hover:border-black'
+                        }`}
+                      >
+                        {val}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {isSize && product.sizeGuide?.[selectedAttributes[attr.name]] && (
-                  <p className="mt-1.5 text-[11px] text-gray-500 bg-gray-50 px-3 py-1.5 rounded border border-dashed border-gray-200">
+                {/* Size measurement hint */}
+                {isSize && product.sizeGuide?.[selectedVal] && (
+                  <p className="mt-2 text-[11px] text-gray-500 bg-gray-50 px-3 py-1.5 rounded border border-dashed border-gray-200">
                     <span className="font-bold text-gray-700">Measurement:</span>{' '}
-                    {product.sizeGuide[selectedAttributes[attr.name]]}
+                    {product.sizeGuide[selectedVal]}
+                  </p>
+                )}
+
+                {/* Color images availability hint */}
+                {isColor && product.colorImages?.[selectedVal] && (
+                  <p className="mt-2 text-[11px] text-gray-400 flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
+                    {product.colorImages[selectedVal].length} photos for this colour
                   </p>
                 )}
               </div>
@@ -286,16 +336,25 @@ export function ProductDetailClient({
         <div className="flex items-start gap-2.5">
           <RotateCcw size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
           <p className="text-[12px] text-gray-600">
-            {settings?.returnPolicy || `${settings?.returnPolicyDays || 30}-day hassle-free returns`}
+            {settings?.returnPolicy || `${settings?.returnPolicyDays || 30}-day hassle-free returns on all unused items.`}
           </p>
         </div>
         <div className="flex items-start gap-2.5">
           <ShieldCheck size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
           <p className="text-[12px] text-gray-600">
-            {settings?.warrantyPolicy || '1-year manufacturer warranty'}
+            {settings?.warrantyPolicy || '1-year manufacturer warranty on all products.'}
           </p>
         </div>
       </div>
     </div>
   );
+}
+
+function isColorDark(hex: string): boolean {
+  const clean = hex.replace('#', '');
+  if (clean.length < 6) return false;
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128;
 }

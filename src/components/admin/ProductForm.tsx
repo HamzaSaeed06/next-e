@@ -443,9 +443,23 @@ export function ProductForm({ initialData, onSuccess }: ProductFormProps = {}) {
         <div className="flex items-center gap-2 pb-2 border-b">
           <Settings2 className="text-orange-500" size={20} />
           <h2 className="text-lg font-bold text-slate-900">Attributes & Variants</h2>
-          <span className="text-[11px] text-slate-400 font-normal ml-1">
-            e.g. Color: Red, Blue — Size: S, M, L
-          </span>
+        </div>
+
+        {/* How-to guide */}
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 space-y-2 text-[12px] text-blue-800">
+          <p className="font-bold">How to add colours and sizes:</p>
+          <ul className="list-disc list-inside space-y-1 text-blue-700">
+            <li>
+              <span className="font-semibold">Colour with HEX code</span> → Attribute Name: <code className="bg-blue-100 px-1 rounded">Color</code> &nbsp;|&nbsp; Values: <code className="bg-blue-100 px-1 rounded">#1A1A2E, #E94560, #F5A623</code>
+              <span className="text-blue-500 ml-1">(circle swatch auto-generated from the code)</span>
+            </li>
+            <li>
+              <span className="font-semibold">Size</span> → Attribute Name: <code className="bg-blue-100 px-1 rounded">Size</code> &nbsp;|&nbsp; Values: <code className="bg-blue-100 px-1 rounded">S, M, L, XL, XXL</code>
+            </li>
+            <li>
+              After adding colours you will see separate <span className="font-semibold">image tabs per colour</span> in the Media section below — upload photos for each colour there.
+            </li>
+          </ul>
         </div>
 
         <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 space-y-6">
@@ -456,7 +470,7 @@ export function ProductForm({ initialData, onSuccess }: ProductFormProps = {}) {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Color"
+                placeholder="e.g.  Color  or  Size"
                 className="w-full px-3 py-2 bg-white border rounded text-[13px] focus:outline-none"
                 value={newAttributeName}
                 onChange={(e) => setNewAttributeName(e.target.value)}
@@ -468,7 +482,13 @@ export function ProductForm({ initialData, onSuccess }: ProductFormProps = {}) {
               </label>
               <input
                 type="text"
-                placeholder="Red, Blue, Green"
+                placeholder={
+                  newAttributeName.toLowerCase() === 'color'
+                    ? '#1A1A2E, #E94560, #F5A623'
+                    : newAttributeName.toLowerCase() === 'size'
+                    ? 'S, M, L, XL, XXL'
+                    : 'Value1, Value2, Value3'
+                }
                 className="w-full px-3 py-2 bg-white border rounded text-[13px] focus:outline-none"
                 value={newAttributeValues}
                 onChange={(e) => setNewAttributeValues(e.target.value)}
@@ -484,23 +504,44 @@ export function ProductForm({ initialData, onSuccess }: ProductFormProps = {}) {
           </div>
 
           {attributes.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {attributes.map((attr, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white border rounded-full shadow-sm"
-                >
-                  <span className="text-[13px] font-bold text-slate-700">{attr.name}:</span>
-                  <span className="text-[12px] text-slate-500">{attr.values.join(', ')}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeAttribute(idx)}
-                    className="text-slate-300 hover:text-red-500 transition-colors"
+            <div className="flex flex-wrap gap-3">
+              {attributes.map((attr, idx) => {
+                const isColorAttr = attr.name.toLowerCase() === 'color';
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border rounded-xl shadow-sm"
                   >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
+                    <span className="text-[12px] font-bold text-slate-700">{attr.name}:</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {attr.values.map((val) => {
+                        const valIsHex = isColorAttr && /^#([0-9A-Fa-f]{3}){1,2}$/.test(val.trim());
+                        return (
+                          <span
+                            key={val}
+                            className="flex items-center gap-1 text-[11px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded-full border"
+                          >
+                            {valIsHex && (
+                              <span
+                                className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0"
+                                style={{ backgroundColor: val }}
+                              />
+                            )}
+                            {val}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAttribute(idx)}
+                      className="text-slate-300 hover:text-red-500 transition-colors ml-1"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -635,27 +676,62 @@ export function ProductForm({ initialData, onSuccess }: ProductFormProps = {}) {
             >
               Main Images
             </button>
-            {colors.map((color) => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => setActiveImageTab(color)}
-                className={`px-4 py-2 text-[13px] font-bold transition-all ${
-                  activeImageTab === color
-                    ? 'text-orange-600 border-b-2 border-orange-600'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                {color} Images
-              </button>
-            ))}
+            {colors.map((color) => {
+              const isHex = /^#([0-9A-Fa-f]{3}){1,2}$/.test(color.trim());
+              const countForColor = (colorImages[color] || []).length;
+              return (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setActiveImageTab(color)}
+                  className={`px-4 py-2 text-[13px] font-bold transition-all flex items-center gap-2 ${
+                    activeImageTab === color
+                      ? 'text-orange-600 border-b-2 border-orange-600'
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <span
+                    className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0 shadow-sm"
+                    style={{ backgroundColor: isHex ? color : color.toLowerCase().replace(/\s+/g, '') }}
+                  />
+                  <span>{isHex ? color : color}</span>
+                  {countForColor > 0 && (
+                    <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-bold">
+                      {countForColor}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 space-y-4">
+            {/* Active tab context */}
+            <div className="flex items-center gap-2 text-[12px] text-slate-500">
+              {activeImageTab !== 'main' && (() => {
+                const isHex = /^#([0-9A-Fa-f]{3}){1,2}$/.test(activeImageTab.trim());
+                return (
+                  <span className="flex items-center gap-1.5 font-medium">
+                    Adding images for colour:
+                    <span
+                      className="inline-block w-4 h-4 rounded-full border border-gray-300 shadow-sm"
+                      style={{ backgroundColor: isHex ? activeImageTab : activeImageTab.toLowerCase() }}
+                    />
+                    <code className="bg-slate-200 px-1.5 py-0.5 rounded font-bold text-slate-700">
+                      {activeImageTab}
+                    </code>
+                    — when customer selects this colour, these images will appear in gallery.
+                  </span>
+                );
+              })()}
+              {activeImageTab === 'main' && (
+                <span>These are the default product images shown before any colour is selected.</span>
+              )}
+            </div>
             <div className="flex gap-3">
               <input
                 type="text"
-                placeholder={`Paste image URL for ${activeImageTab === 'main' ? 'main product' : activeImageTab}...`}
+                placeholder="Paste image URL (.jpg, .png, .webp) and press Enter or click Add"
                 className="flex-1 px-4 py-2 bg-white border rounded text-[13px] focus:outline-none"
                 value={newImageUrl}
                 onChange={(e) => setNewImageUrl(e.target.value)}
