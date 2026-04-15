@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "encrypted-tbn0.gstatic.com" },
+      { protocol: "https", hostname: "cdn.media.amplience.net" },
+      { protocol: "https", hostname: "**.gstatic.com" },
+      { protocol: "https", hostname: "**.googleapis.com" },
+      { protocol: "https", hostname: "**.cdn.**.com" },
+      // Allow any external HTTPS image source for product images
+      { protocol: "https", hostname: "**" },
     ],
   },
   experimental: {

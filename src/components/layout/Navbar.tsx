@@ -29,9 +29,8 @@ export function Navbar() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { items, openCart } = useCartStore();
-  const { user, role, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const itemCount = items.reduce((sum, item) => sum + item.qty, 0);
-  const isAdmin = role === 'admin' || role === 'manager';
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -170,37 +169,24 @@ export function Navbar() {
                       <p className="text-xs text-[var(--neutral-400)] truncate">{user.email}</p>
                     </div>
 
-                    {!isAdmin && (
-                      <Link
-                        href="/dashboard"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--neutral-600)] hover:text-black hover:bg-[var(--neutral-50)] transition-colors"
-                      >
-                        <Package className="w-4 h-4" /> My Orders
-                      </Link>
-                    )}
-
-                    {isAdmin && (
-                      <>
-                        <Link
-                          href="/admin"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-black font-bold hover:bg-[var(--neutral-50)] transition-colors"
-                        >
-                          <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
-                        </Link>
-                        <Link
-                          href="/admin/orders"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--neutral-600)] hover:text-black hover:bg-[var(--neutral-50)] transition-colors"
-                        >
-                          <Package className="w-4 h-4" /> Manage Orders
-                        </Link>
-                      </>
-                    )}
+                    <Link
+                      href="/account/orders"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--neutral-600)] hover:text-black hover:bg-[var(--neutral-50)] transition-colors"
+                    >
+                      <Package className="w-4 h-4" /> My Orders
+                    </Link>
 
                     <Link
-                      href="/dashboard/profile"
+                      href="/admin"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-black font-bold hover:bg-[var(--neutral-50)] transition-colors"
+                    >
+                      <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
+                    </Link>
+
+                    <Link
+                      href="/account/profile"
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--neutral-600)] hover:text-black hover:bg-[var(--neutral-50)] transition-colors"
                     >

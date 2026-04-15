@@ -13,8 +13,12 @@ import {
   ChevronRight,
   Menu,
   X,
+  AlertTriangle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const adminNavItems = [
   { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
@@ -29,6 +33,20 @@ const adminNavItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [firestoreError, setFirestoreError] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      try {
+        await getDoc(doc(db, 'users', user.uid));
+        setFirestoreError(false);
+      } catch {
+        setFirestoreError(true);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const isActive = (item: { path: string; exact?: boolean }) =>
     item.exact ? pathname === item.path : pathname.startsWith(item.path);
@@ -112,6 +130,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="text-[14px] font-bold text-slate-900 uppercase tracking-widest">Admin</span>
           <Link href="/" className="text-[12px] text-slate-400 font-medium">Store →</Link>
         </div>
+        {firestoreError && (
+          <div className="mx-4 mt-4 lg:mx-6 lg:mt-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-[13px] font-semibold text-amber-800">Firestore Permission Error</p>
+              <p className="text-[12px] text-amber-700 mt-0.5">
+                Your Firebase Firestore security rules are blocking data reads. Go to{' '}
+                <strong>Firebase Console → Firestore → Rules</strong> and paste the rules from{' '}
+                <code className="bg-amber-100 px-1 rounded">firestore.rules</code> in your project root.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="p-4 lg:p-6">{children}</div>
       </main>
     </div>

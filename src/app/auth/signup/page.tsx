@@ -21,7 +21,9 @@ export default function SignupPage() {
     setUser(user);
     setRole(user.role ?? 'user');
     document.cookie = `auth-token=${user.uid}; path=/; max-age=604800`;
-    document.cookie = `auth-role=${user.role ?? 'user'}; path=/; max-age=604800`;
+    if (user.role) {
+      document.cookie = `auth-role=${user.role}; path=/; max-age=604800`;
+    }
     router.push('/');
   };
 

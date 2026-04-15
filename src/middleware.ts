@@ -3,19 +3,20 @@ import type { NextRequest } from 'next/server';
 
 /**
  * Middleware runs on the Edge runtime — no Firebase Admin SDK.
- * We use a session cookie set after login to detect authenticated users.
- * The cookie `auth-token` is populated by the client after successful login.
+ * We use session cookies set after login for auth detection.
+ * auth-token = Firebase UID (set client-side after login)
+ * auth-role  = user role (may be missing if Firestore rules block reads)
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Read auth cookie (set client-side after login for edge compatibility)
   const authToken = request.cookies.get('auth-token')?.value;
   const authRole = request.cookies.get('auth-role')?.value;
   const isAuthenticated = Boolean(authToken);
-  const isAdmin = authRole === 'admin' || authRole === 'manager';
 
   // ── Protect /admin routes ────────────────────────────────────────────────
+  // Allow if authenticated (role check is done inside admin pages,
+  // since role may not load if Firestore rules are restrictive)
   if (pathname.startsWith('/admin')) {
     if (!isAuthenticated) {
       const url = request.nextUrl.clone();
@@ -23,20 +24,33 @@ export function middleware(request: NextRequest) {
       url.searchParams.set('redirect', pathname);
       return NextResponse.redirect(url);
     }
-    if (!isAdmin) {
-      // Logged in but not admin — redirect to home
+    // If role is explicitly 'user' (not admin/manager), block access
+    if (authRole === 'user') {
       return NextResponse.redirect(new URL('/', request.url));
     }
+    // If role is 'admin', 'manager', or undefined (Firestore not readable yet), allow through
   }
 
-  // ── Protect /dashboard routes ────────────────────────────────────────────
-  if (pathname.startsWith('/dashboard')) {
+  // ── Protect /account routes ──────────────────────────────────────────────
+  if (pathname.startsWith('/account')) {
     if (!isAuthenticated) {
       const url = request.nextUrl.clone();
       url.pathname = '/auth/login';
       url.searchParams.set('redirect', pathname);
       return NextResponse.redirect(url);
     }
+  }
+
+  // ── Protect /dashboard routes (redirect to /account) ────────────────────
+  if (pathname.startsWith('/dashboard')) {
+    if (!isAuthenticated) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/auth/login';
+      url.searchParams.set('redirect', '/account/orders');
+      return NextResponse.redirect(url);
+    }
+    // Redirect /dashboard to /account/orders
+    return NextResponse.redirect(new URL('/account/orders', request.url));
   }
 
   // ── Redirect authenticated users away from auth pages ───────────────────
@@ -48,5 +62,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/dashboard/:path*', '/auth/:path*'],
+  matcher: ['/admin/:path*', '/account/:path*', '/dashboard/:path*', '/auth/:path*'],
 };

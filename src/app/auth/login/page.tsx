@@ -21,9 +21,12 @@ function LoginForm() {
   const afterLogin = (user: any) => {
     setUser(user);
     setRole(user.role ?? 'user');
-    // Set cookies for middleware
     document.cookie = `auth-token=${user.uid}; path=/; max-age=604800`;
-    document.cookie = `auth-role=${user.role ?? 'user'}; path=/; max-age=604800`;
+    // Only set role cookie if we actually know the role from Firestore
+    // If role is undefined (Firestore blocked), don't set 'user' — let middleware decide
+    if (user.role) {
+      document.cookie = `auth-role=${user.role}; path=/; max-age=604800`;
+    }
     router.push(redirect);
   };
 

@@ -122,7 +122,7 @@ export function ProductGallery({
         <div className="flex-1 min-w-0">
           <div
             className="relative w-full bg-[#f5f5f5] overflow-hidden group cursor-zoom-in"
-            style={{ height: 'min(520px, 60vw)' }}
+            style={{ height: 'min(420px, 50vw)' }}
             onClick={() => openLightbox(activeImage)}
           >
             <Image
