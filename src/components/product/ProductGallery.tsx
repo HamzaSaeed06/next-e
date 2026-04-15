@@ -41,10 +41,7 @@ export function ProductGallery({
       Math.min(validImages.length - VISIBLE_THUMBS, prev + 1)
     );
 
-  const visibleThumbs = validImages.slice(
-    thumbOffset,
-    thumbOffset + VISIBLE_THUMBS
-  );
+  const visibleThumbs = validImages.slice(thumbOffset, thumbOffset + VISIBLE_THUMBS);
 
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
@@ -86,7 +83,6 @@ export function ProductGallery({
                 <ChevronUp size={16} />
               </button>
             )}
-
             <div className="flex flex-col gap-2">
               {visibleThumbs.map((img, i) => {
                 const realIndex = thumbOffset + i;
@@ -111,7 +107,6 @@ export function ProductGallery({
                 );
               })}
             </div>
-
             {canScrollDown && (
               <button
                 onClick={scrollDown}
@@ -123,10 +118,11 @@ export function ProductGallery({
           </div>
         )}
 
-        {/* Main Image */}
-        <div className="flex-1 relative">
+        {/* Main Image — fixed height, no overflow */}
+        <div className="flex-1 min-w-0">
           <div
-            className="aspect-[3/4] relative bg-[#f5f5f5] overflow-hidden group cursor-zoom-in"
+            className="relative w-full bg-[#f5f5f5] overflow-hidden group cursor-zoom-in"
+            style={{ height: 'min(520px, 60vw)' }}
             onClick={() => openLightbox(activeImage)}
           >
             <Image
@@ -135,7 +131,7 @@ export function ProductGallery({
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-contain mix-blend-multiply p-6 transition-transform duration-500 group-hover:scale-110"
+              className="object-contain mix-blend-multiply p-6 transition-transform duration-500 group-hover:scale-105"
             />
 
             {isFlashSale && (
@@ -166,18 +162,10 @@ export function ProductGallery({
                   key={i}
                   onClick={() => setActiveImage(i)}
                   className={`w-14 h-14 relative flex-shrink-0 bg-[#f5f5f5] overflow-hidden border transition-all ${
-                    activeImage === i
-                      ? 'border-black ring-1 ring-black'
-                      : 'border-gray-200'
+                    activeImage === i ? 'border-black ring-1 ring-black' : 'border-gray-200'
                   }`}
                 >
-                  <Image
-                    src={img}
-                    alt={`View ${i + 1}`}
-                    fill
-                    sizes="56px"
-                    className="object-contain mix-blend-multiply p-1"
-                  />
+                  <Image src={img} alt={`View ${i + 1}`} fill sizes="56px" className="object-contain mix-blend-multiply p-1" />
                 </button>
               ))}
             </div>
@@ -185,13 +173,12 @@ export function ProductGallery({
         </div>
       </div>
 
-      {/* Lightbox / Zoom Modal */}
+      {/* Lightbox */}
       {lightboxOpen && (
         <div
-          className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center"
+          className="fixed inset-0 z-[999] bg-black/92 flex items-center justify-center"
           onClick={closeLightbox}
         >
-          {/* Close Button */}
           <button
             className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
             onClick={closeLightbox}
@@ -199,12 +186,10 @@ export function ProductGallery({
             <X size={22} />
           </button>
 
-          {/* Counter */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/70 text-[13px] font-medium">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/60 text-[13px]">
             {lightboxIndex + 1} / {validImages.length}
           </div>
 
-          {/* Prev Button */}
           {validImages.length > 1 && (
             <button
               className="absolute left-4 z-10 w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
@@ -214,14 +199,13 @@ export function ProductGallery({
             </button>
           )}
 
-          {/* Main Lightbox Image */}
           <div
-            className="relative w-full h-full max-w-3xl max-h-[85vh] mx-16"
+            className="relative w-full h-full max-w-4xl max-h-[85vh] mx-20"
             onClick={(e) => e.stopPropagation()}
           >
             <Image
               src={validImages[lightboxIndex]}
-              alt={`${productName} zoomed view ${lightboxIndex + 1}`}
+              alt={`${productName} zoomed`}
               fill
               sizes="90vw"
               className="object-contain"
@@ -229,7 +213,6 @@ export function ProductGallery({
             />
           </div>
 
-          {/* Next Button */}
           {validImages.length > 1 && (
             <button
               className="absolute right-4 z-10 w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
@@ -239,7 +222,6 @@ export function ProductGallery({
             </button>
           )}
 
-          {/* Thumbnail strip at bottom */}
           {validImages.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
               {validImages.map((img, i) => (
@@ -250,13 +232,7 @@ export function ProductGallery({
                     lightboxIndex === i ? 'border-white' : 'border-white/30 hover:border-white/60'
                   }`}
                 >
-                  <Image
-                    src={img}
-                    alt={`Thumb ${i + 1}`}
-                    fill
-                    sizes="48px"
-                    className="object-contain bg-white p-0.5"
-                  />
+                  <Image src={img} alt={`Thumb ${i + 1}`} fill sizes="48px" className="object-contain bg-white p-0.5" />
                 </button>
               ))}
             </div>
