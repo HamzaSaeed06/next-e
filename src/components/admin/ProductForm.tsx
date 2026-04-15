@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
@@ -18,6 +18,7 @@ import {
   Zap,
   Weight,
   List,
+  Upload,
 } from 'lucide-react';
 import { createProduct, updateProduct } from '@/lib/services/productService';
 import type { Product, ProductAttribute, ProductVariant } from '@/types';
@@ -64,6 +65,48 @@ export function ProductForm({ initialData, onSuccess }: ProductFormProps = {}) {
   const [colorImages, setColorImages] = useState<Record<string, string[]>>(initialData?.colorImages || {});
   const [sizeGuide, setSizeGuide] = useState<Record<string, string>>(initialData?.sizeGuide || {});
   const [activeImageTab, setActiveImageTab] = useState<'main' | string>('main');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadToCloudinary = async (file: File): Promise<string> => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'drcmvkkg2';
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'e-commerce';
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Upload failed');
+    const data = await res.json();
+    return data.secure_url as string;
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      const urls = await Promise.all(files.map(uploadToCloudinary));
+      urls.forEach(url => {
+        if (activeImageTab === 'main') {
+          setMainImages(prev => [...prev, url]);
+        } else {
+          setColorImages(prev => ({
+            ...prev,
+            [activeImageTab]: [...(prev[activeImageTab] || []), url],
+          }));
+        }
+      });
+      toast.success(`${urls.length} image${urls.length > 1 ? 's' : ''} uploaded!`);
+    } catch {
+      toast.error('Image upload failed. Check your Cloudinary settings.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const [specifications, setSpecifications] = useState<{ key: string; value: string }[]>(
     initialData?.specifications || []
@@ -728,22 +771,61 @@ export function ProductForm({ initialData, onSuccess }: ProductFormProps = {}) {
                 <span>These are the default product images shown before any colour is selected.</span>
               )}
             </div>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                placeholder="Paste image URL (.jpg, .png, .webp) and press Enter or click Add"
-                className="flex-1 px-4 py-2 bg-white border rounded text-[13px] focus:outline-none"
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
-              />
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+
+            {/* Upload & URL row */}
+            <div className="space-y-2">
+              {/* File Upload Button */}
               <button
                 type="button"
-                onClick={addImage}
-                className="px-6 py-2 bg-slate-900 text-white text-[13px] font-bold rounded hover:bg-black transition-all"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-orange-300 rounded-lg text-[13px] font-semibold text-orange-600 hover:border-orange-500 hover:bg-orange-50 transition-all disabled:opacity-60"
               >
-                Add Image
+                {uploading ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    Uploading to Cloudinary...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={15} />
+                    Upload from your computer (saves to Cloudinary)
+                  </>
+                )}
               </button>
+
+              {/* URL input */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-[11px] text-slate-400 font-medium">OR paste URL</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Paste image URL (.jpg, .png, .webp) and press Enter"
+                  className="flex-1 px-4 py-2 bg-white border rounded text-[13px] focus:outline-none"
+                  value={newImageUrl}
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
+                />
+                <button
+                  type="button"
+                  onClick={addImage}
+                  className="px-5 py-2 bg-slate-900 text-white text-[13px] font-bold rounded hover:bg-black transition-all"
+                >
+                  Add
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">

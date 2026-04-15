@@ -255,6 +255,15 @@ export interface Banner {
   order: number;
 }
 
+export interface StorePromotion {
+  id: string;
+  title: string;
+  subtitle: string;
+  badge: string;
+  endsAt: string;
+  isActive: boolean;
+}
+
 export interface StoreSettings {
   freeDeliveryThreshold: number;
   standardShippingCost: number;
@@ -270,5 +279,28 @@ export interface StoreSettings {
   flashSaleBannerTitle: string;
   flashSaleBannerSubtitle: string;
   flashSaleBannerActive: boolean;
+  // Social Media
+  socialFacebook?: string;
+  socialInstagram?: string;
+  socialTwitter?: string;
+  socialTikTok?: string;
+  socialYouTube?: string;
+  socialWhatsApp?: string;
+  // Contact Info
+  contactEmail?: string;
+  contactPhone?: string;
+  contactAddress?: string;
+  // Google AdSense
+  adsensePublisherId?: string;
+  adsenseHomeBanner?: string;
+  adsenseProductsPage?: string;
+  adsenseProductDetail?: string;
+  adsenseEnabled?: boolean;
+  // Events / Promotions
+  promotions?: StorePromotion[];
+  // Chatbot
+  chatbotEnabled?: boolean;
+  chatbotGreeting?: string;
+  chatbotName?: string;
   updatedAt?: Date;
 }
