@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     // Enable server actions for form submissions
-    serverActions: { allowedOrigins: ["localhost:3000"] },
+    serverActions: { allowedOrigins: ["localhost:5000", process.env.REPLIT_DOMAINS || ""] },
   },
 };
 
