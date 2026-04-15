@@ -1,8 +1,13 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Heart, Loader2, Ruler, RotateCcw, ShieldCheck, Truck, Check } from 'lucide-react';
+import { Heart, Loader2, Ruler, RotateCcw, ShieldCheck, Truck, Check, Star } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import { useWishlistStore } from '@/store/wishlistStore';
+import { useAuthStore } from '@/store/authStore';
+import { hasUserPurchasedProduct } from '@/lib/services/orderService';
+import { hasUserReviewedProduct } from '@/lib/services/reviewService';
+import { ReviewModal } from '@/components/reviews/ReviewModal';
 import type { Product, StoreSettings } from '@/types';
 import { formatPrice } from '@/utils/formatters';
 import toast from 'react-hot-toast';
@@ -17,9 +22,16 @@ export function ProductDetailClient({
   onDisplayImagesChange?: (images: string[]) => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+
   const { addItem, openCart } = useCartStore();
+  const { toggleItem, isWishlisted } = useWishlistStore();
+  const { user } = useAuthStore();
+
+  const wishlisted = isWishlisted(product.id);
 
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
@@ -58,6 +70,22 @@ export function ProductDetailClient({
     }
   }, [displayImages, product.images, onDisplayImagesChange]);
 
+  // Check if logged-in user is a verified buyer and hasn't reviewed yet
+  useEffect(() => {
+    if (!user) { setCanReview(false); return; }
+    let cancelled = false;
+    Promise.all([
+      hasUserPurchasedProduct(user.uid, product.id),
+      hasUserReviewedProduct(user.uid, product.id),
+    ]).then(([purchased, reviewed]) => {
+      if (!cancelled) {
+        setCanReview(purchased);
+        setHasReviewed(reviewed);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [user, product.id]);
+
   const handleAddToCart = () => {
     const currentStock = activeVariant?.stock ?? product.stock;
     if (currentStock === 0) return;
@@ -77,6 +105,15 @@ export function ProductDetailClient({
       openCart();
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleWishlist = () => {
+    toggleItem(product);
+    if (wishlisted) {
+      toast.success('Removed from wishlist');
+    } else {
+      toast.success('Added to wishlist');
     }
   };
 
@@ -163,7 +200,6 @@ export function ProductDetailClient({
 
             return (
               <div key={attr.name}>
-                {/* Attribute Label Row */}
                 <div className="flex items-center justify-between mb-2.5">
                   <p className="text-[12px] text-gray-800 font-bold flex items-center gap-2">
                     {attr.name}:
@@ -188,7 +224,6 @@ export function ProductDetailClient({
                   )}
                 </div>
 
-                {/* Swatches / Pills */}
                 <div className="flex flex-wrap gap-2">
                   {attr.values.map((val) => {
                     const valIsHex = isColor && isHex(val);
@@ -242,7 +277,6 @@ export function ProductDetailClient({
                   })}
                 </div>
 
-                {/* Size measurement hint */}
                 {isSize && product.sizeGuide?.[selectedVal] && (
                   <p className="mt-2 text-[11px] text-gray-500 bg-gray-50 px-3 py-1.5 rounded border border-dashed border-gray-200">
                     <span className="font-bold text-gray-700">Measurement:</span>{' '}
@@ -250,7 +284,6 @@ export function ProductDetailClient({
                   </p>
                 )}
 
-                {/* Color images availability hint */}
                 {isColor && product.colorImages?.[selectedVal] && (
                   <p className="mt-2 text-[11px] text-gray-400 flex items-center gap-1">
                     <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
@@ -292,14 +325,43 @@ export function ProductDetailClient({
           Checkout Now
         </button>
         <button
-          onClick={() => setIsWishlisted(!isWishlisted)}
+          onClick={handleWishlist}
           className={`w-12 border rounded flex items-center justify-center transition-all ${
-            isWishlisted ? 'border-red-300 text-red-500 bg-red-50' : 'border-gray-300 text-gray-500 hover:text-black hover:border-black'
+            wishlisted ? 'border-red-300 text-red-500 bg-red-50' : 'border-gray-300 text-gray-500 hover:text-black hover:border-black'
           }`}
+          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
         >
-          <Heart size={18} className={isWishlisted ? 'fill-red-500' : ''} />
+          <Heart size={18} className={wishlisted ? 'fill-red-500' : ''} />
         </button>
       </div>
+
+      {/* Verified Buyer Review Button */}
+      {canReview && (
+        <div className="border border-dashed border-amber-200 rounded-xl p-4 bg-amber-50/50 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[12px] font-bold text-amber-800">You purchased this product</p>
+            {hasReviewed ? (
+              <p className="text-[11px] text-green-600 mt-0.5 font-medium">Thanks for your review!</p>
+            ) : (
+              <p className="text-[11px] text-amber-600 mt-0.5">Share your experience to help others.</p>
+            )}
+          </div>
+          {hasReviewed ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-[11px] font-bold flex-shrink-0">
+              <Check size={12} />
+              Reviewed
+            </div>
+          ) : (
+            <button
+              onClick={() => setReviewModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-amber-400 text-black border border-amber-400 rounded-full text-[12px] font-bold hover:bg-amber-500 transition-all flex-shrink-0"
+            >
+              <Star size={13} fill="currentColor" />
+              Write a Review
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Specifications */}
       {product.specifications && product.specifications.length > 0 && (
@@ -346,6 +408,20 @@ export function ProductDetailClient({
           </p>
         </div>
       </div>
+
+      {/* Review Modal */}
+      {reviewModalOpen && (
+        <ReviewModal
+          productId={product.id}
+          productName={product.name}
+          productImage={product.images[0] || ''}
+          onClose={() => setReviewModalOpen(false)}
+          onSuccess={() => {
+            setHasReviewed(true);
+            setReviewModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -6,21 +6,21 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getOrderById } from '@/lib/services/orderService';
+import { subscribeToOrder } from '@/lib/services/orderService';
 import { hasUserReviewedProduct } from '@/lib/services/reviewService';
 import { formatPrice } from '@/utils/formatters';
 import type { Order } from '@/types';
 import { ReviewModal } from '@/components/reviews/ReviewModal';
 import { 
   ChevronLeft, Package, CheckCircle, Truck, 
-  Clock, XCircle, Star, Loader2, MapPin
+  Clock, XCircle, Star, Loader2, MapPin, RefreshCw
 } from 'lucide-react';
 
 const STATUS_STEPS = [
-  { key: 'pending',   label: 'Order Placed',     icon: Clock },
-  { key: 'confirmed', label: 'Confirmed',         icon: CheckCircle },
-  { key: 'shipped',   label: 'Shipped',           icon: Truck },
-  { key: 'delivered', label: 'Delivered',         icon: Package },
+  { key: 'pending',   label: 'Order Placed',  icon: Clock },
+  { key: 'confirmed', label: 'Confirmed',      icon: CheckCircle },
+  { key: 'shipped',   label: 'Shipped',        icon: Truck },
+  { key: 'delivered', label: 'Delivered',      icon: Package },
 ];
 
 const STATUS_ORDER = ['pending', 'confirmed', 'shipped', 'delivered'];
@@ -32,8 +32,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [reviewedItems, setReviewedItems] = useState<Record<string, boolean>>({});
+  const [userId, setUserId] = useState<string | null>(null);
 
-  // Review Modal State
   const [reviewModal, setReviewModal] = useState<{
     open: boolean;
     productId: string;
@@ -42,27 +42,48 @@ export default function OrderDetailPage() {
   }>({ open: false, productId: '', productName: '', productImage: '' });
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    let unsubOrder: (() => void) | null = null;
+
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         router.push('/auth/login');
         return;
       }
-      const data = await getOrderById(orderId);
-      if (!data) { router.push('/account/orders'); return; }
-      setOrder(data);
+      setUserId(user.uid);
 
-      // Check which items have already been reviewed
-      const reviewStatus: Record<string, boolean> = {};
-      await Promise.all(
-        data.items.map(async (item) => {
-          reviewStatus[item.productId] = await hasUserReviewedProduct(user.uid, item.productId);
-        })
-      );
-      setReviewedItems(reviewStatus);
-      setLoading(false);
+      unsubOrder = subscribeToOrder(orderId, async (data) => {
+        if (!data) { router.push('/account/orders'); return; }
+        setOrder(data);
+
+        if (loading) {
+          const reviewStatus: Record<string, boolean> = {};
+          await Promise.all(
+            data.items.map(async (item) => {
+              reviewStatus[item.productId] = await hasUserReviewedProduct(user.uid, item.productId);
+            })
+          );
+          setReviewedItems(reviewStatus);
+          setLoading(false);
+        }
+      });
     });
-    return () => unsub();
+
+    return () => {
+      unsubAuth();
+      if (unsubOrder) unsubOrder();
+    };
   }, [orderId, router]);
+
+  const refreshReviewStatus = async () => {
+    if (!userId || !order) return;
+    const reviewStatus: Record<string, boolean> = {};
+    await Promise.all(
+      order.items.map(async (item) => {
+        reviewStatus[item.productId] = await hasUserReviewedProduct(userId, item.productId);
+      })
+    );
+    setReviewedItems(reviewStatus);
+  };
 
   if (loading) {
     return (
@@ -89,8 +110,12 @@ export default function OrderDetailPage() {
           <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">
             Order #{order.id.slice(0, 8).toUpperCase()}
           </h1>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
             Placed on {new Date(order.createdAt as any).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            <span className="inline-flex items-center gap-1 text-green-500 font-medium">
+              <RefreshCw size={10} className="animate-spin" style={{ animationDuration: '3s' }} />
+              Live
+            </span>
           </p>
         </div>
       </div>
@@ -100,7 +125,6 @@ export default function OrderDetailPage() {
         <div className="bg-white border border-gray-100 rounded-2xl p-6">
           <h2 className="text-[13px] font-bold text-gray-500 uppercase tracking-widest mb-8">Order Progress</h2>
           <div className="flex items-start justify-between relative">
-            {/* Connector Line */}
             <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-100 mx-10 z-0" />
             <div
               className="absolute top-5 left-0 h-0.5 bg-black z-0 mx-10 transition-all duration-1000"
@@ -195,13 +219,23 @@ export default function OrderDetailPage() {
                     className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-600 border border-amber-200 rounded-full text-[12px] font-bold hover:bg-amber-100 transition-all flex-shrink-0 group"
                   >
                     <Star size={13} className="group-hover:scale-110 transition-transform" />
-                    Rate this Product
+                    Rate this
                   </button>
                 )
               )}
             </div>
           ))}
         </div>
+
+        {/* Delivered nudge banner */}
+        {isDelivered && Object.values(reviewedItems).some(v => !v) && (
+          <div className="mx-6 mb-5 mt-1 flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+            <Star size={16} className="text-amber-400 flex-shrink-0" fill="currentColor" />
+            <p className="text-[12px] text-amber-700 font-medium">
+              Your order was delivered! Share your experience by rating the items above.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Delivery Address ──────────────────────────────────── */}
@@ -247,9 +281,9 @@ export default function OrderDetailPage() {
           productImage={reviewModal.productImage}
           onClose={() => setReviewModal(p => ({ ...p, open: false }))}
           onSuccess={() => {
-            // Mark as reviewed locally
             setReviewedItems(prev => ({ ...prev, [reviewModal.productId]: true }));
             setReviewModal(p => ({ ...p, open: false }));
+            refreshReviewStatus();
           }}
         />
       )}

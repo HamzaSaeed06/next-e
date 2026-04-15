@@ -9,6 +9,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { formatPrice } from '@/utils/formatters';
 import { createOrder } from '@/lib/services/orderService';
+import { createNotification } from '@/lib/services/notificationService';
 import type { Address } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -79,6 +80,16 @@ export default function CheckoutPage() {
         address: fullAddress,
         paymentMethod: payment,
       });
+
+      // Notify user that order was placed
+      createNotification({
+        userId: user.uid,
+        type: 'order',
+        title: '🛍️ Order Placed Successfully!',
+        body: `Your order #${orderId.slice(0, 8).toUpperCase()} has been placed. We'll notify you when it's confirmed.`,
+        actionUrl: `/account/orders/${orderId}`,
+      }).catch(() => {});
+
       clearCart();
       router.push(`/order-confirmation?orderId=${orderId}`);
     } catch (err) {
