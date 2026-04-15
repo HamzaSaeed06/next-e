@@ -18,7 +18,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { getOrderById, updateOrderStatus } from '@/lib/services/orderService';
-import { formatPrice, formatDate } from '@/utils/formatters';
+import { formatPrice, formatDate, toDate } from '@/utils/formatters';
 import type { Order } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -217,7 +217,7 @@ export default function AdminOrderDetailPage() {
                         <div>
                           <p className="text-[13px] font-medium text-slate-700">{event.message}</p>
                           <p className="text-[11px] text-slate-400 mt-0.5">
-                            {new Date(event.timestamp as any).toLocaleString()}
+                            {toDate(event.timestamp).toLocaleString()}
                           </p>
                         </div>
                       </div>

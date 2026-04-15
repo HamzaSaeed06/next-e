@@ -21,7 +21,7 @@ import { getAllOrders } from '@/lib/services/orderService';
 import { getProducts } from '@/lib/services/productService';
 import { collection, getDocs, query, limit, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { formatPrice, formatDate } from '@/utils/formatters';
+import { formatPrice, formatDate, toDate } from '@/utils/formatters';
 import type { Order } from '@/types';
 import Image from 'next/image';
 
@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
         const revenue = orders.reduce((s, o) => s + (o.total || 0), 0);
         const pendingOrders = orders.filter((o) => o.status === 'pending').length;
         const todayOrders = orders.filter((o) => {
-          const d = new Date(o.createdAt as any);
+          const d = toDate(o.createdAt);
           return d >= today;
         }).length;
 
