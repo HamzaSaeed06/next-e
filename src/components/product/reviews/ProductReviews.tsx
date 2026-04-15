@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Star, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ThumbsUp, ThumbsDown, ChevronUp } from 'lucide-react';
 import { getReviewsByProduct, markReviewHelpful } from '@/lib/services/reviewService';
 import type { Review } from '@/types';
 
@@ -19,8 +19,9 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
   const [loading, setLoading] = useState(true);
   const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'all' | 'photo' | 'description'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'description'>('all');
   const [page, setPage] = useState(1);
+  const [helpfulClicked, setHelpfulClicked] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function fetchReviews() {
@@ -29,7 +30,7 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
         const data = await getReviewsByProduct(productId, 'recent');
         setReviews(data);
       } catch {
-        // Firebase permissions not configured — show empty state gracefully
+        // Firestore permissions not configured — show empty state
       } finally {
         setLoading(false);
       }
@@ -52,16 +53,19 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
     ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length
     : initialRating;
 
+  const formatReviewCount = (n: number) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(2)}k`;
+    return String(n);
+  };
+
   // Filtering
   const filteredReviews = useMemo(() => {
     let result = [...reviews];
     if (selectedRatings.length > 0) {
       result = result.filter(r => selectedRatings.includes(Math.round(r.rating)));
     }
-    if (activeTab === 'photo') {
-      result = result.filter(r => r.images && r.images.length > 0);
-    } else if (activeTab === 'description') {
-      result = result.filter(r => r.body && r.body.length > 50);
+    if (activeTab === 'description') {
+      result = result.filter(r => r.body && r.body.length > 10);
     }
     return result;
   }, [reviews, selectedRatings, activeTab]);
@@ -80,54 +84,62 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
 
   const formatDate = (createdAt: any) => {
     try {
-      const date = createdAt instanceof Date ? createdAt : new Date(createdAt);
+      const ts = typeof createdAt === 'number' ? createdAt : (createdAt?.seconds ? createdAt.seconds * 1000 : undefined);
+      const date = ts ? new Date(ts) : new Date(createdAt);
       return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     } catch { return ''; }
   };
 
   const handleHelpful = async (reviewId: string) => {
+    if (helpfulClicked.has(reviewId)) return;
     try {
       await markReviewHelpful(reviewId);
       setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, helpful: (r.helpful || 0) + 1 } : r));
+      setHelpfulClicked(prev => new Set(prev).add(reviewId));
     } catch {}
   };
 
   return (
     <div>
       {/* ── Rating Summary ──────────────────────────────────────────── */}
-      <div className="border border-dashed border-gray-200 rounded-xl p-5 mb-8">
-        <div className="flex items-center gap-8 sm:gap-12">
-          {/* Left: Average Score */}
+      <div className="border border-gray-200 rounded-xl p-6 mb-8">
+        <div className="flex items-center gap-10 sm:gap-16">
+          {/* Left: Circular score */}
           <div className="flex flex-col items-center gap-2 flex-shrink-0">
-            <div className="w-16 h-16 rounded-full border-2 border-amber-400 flex items-center justify-center">
-              <span className="text-xl font-extrabold text-gray-800">{avgRating.toFixed(1)}</span>
+            <div className="w-20 h-20 rounded-full border-4 border-amber-400 flex items-center justify-center">
+              <span className="text-2xl font-extrabold text-gray-800">{avgRating.toFixed(1)}</span>
             </div>
-            <div className="flex gap-0.5">
+            <div className="flex gap-0.5 mt-1">
               {[1, 2, 3, 4, 5].map(i => (
-                <Star key={i} size={14} className="text-amber-400" fill={i <= Math.round(avgRating) ? 'currentColor' : 'none'} />
+                <Star
+                  key={i}
+                  size={16}
+                  className="text-amber-400"
+                  fill={i <= Math.round(avgRating) ? 'currentColor' : 'none'}
+                />
               ))}
             </div>
             <p className="text-[11px] text-gray-400 font-medium whitespace-nowrap text-center">
-              from {totalReviews >= 1000 ? `${(totalReviews / 1000).toFixed(2)}k` : totalReviews} reviews
+              from {formatReviewCount(totalReviews)} reviews
             </p>
           </div>
 
           {/* Right: Distribution Bars */}
-          <div className="flex-1 space-y-2.5">
+          <div className="flex-1 space-y-2">
             {[5, 4, 3, 2, 1].map(star => {
               const count = distribution[star] || 0;
               const pct = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
               return (
                 <div key={star} className="flex items-center gap-3">
-                  <span className="text-[12px] text-gray-500 w-5 flex-shrink-0">{star}.0</span>
-                  <Star size={12} className="text-amber-400 flex-shrink-0" fill="currentColor" />
-                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <span className="text-[13px] text-gray-500 w-6 flex-shrink-0 text-right">{star}.0</span>
+                  <Star size={13} className="text-amber-400 flex-shrink-0" fill="currentColor" />
+                  <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gray-800 rounded-full transition-all duration-700"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-[12px] text-gray-500 w-8 text-right flex-shrink-0">{count}</span>
+                  <span className="text-[13px] text-gray-500 w-10 text-right flex-shrink-0">{count}</span>
                 </div>
               );
             })}
@@ -135,26 +147,29 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
         </div>
       </div>
 
-      {/* ── Reviews Body: Filter Left + List Right ─────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[180px_1fr] gap-8">
+      {/* ── Reviews Body ────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-8">
 
-        {/* LEFT: Reviews Filter Panel */}
+        {/* LEFT: Filter Sidebar */}
         <aside>
-          <div className="border border-dashed border-gray-200 rounded-xl p-4 space-y-5">
-            <h3 className="text-[13px] font-extrabold text-gray-800">Reviews Filter</h3>
+          <div className="border border-gray-200 rounded-xl p-5 space-y-6">
+            <h3 className="text-[14px] font-extrabold text-gray-800">Reviews Filter</h3>
 
             {/* Rating filter */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[12px] font-bold text-gray-700">Rating</span>
-                <span className="text-gray-400 text-xs">∧</span>
+                <span className="text-[13px] font-bold text-gray-700">Rating</span>
+                <ChevronUp size={14} className="text-gray-400" />
               </div>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {[5, 4, 3, 2, 1].map(star => (
-                  <label key={star} className="flex items-center gap-2.5 cursor-pointer group">
+                  <label
+                    key={star}
+                    className="flex items-center gap-2.5 cursor-pointer group"
+                    onClick={() => toggleRating(star)}
+                  >
                     <div
-                      onClick={() => toggleRating(star)}
-                      className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-all ${
+                      className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center transition-all ${
                         selectedRatings.includes(star)
                           ? 'bg-amber-400 border-amber-400'
                           : 'border-gray-300 group-hover:border-amber-400'
@@ -171,6 +186,7 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
                         <Star key={i} size={13} fill="currentColor" className="text-amber-400" />
                       ))}
                     </div>
+                    <span className="text-[12px] text-gray-500">{star}</span>
                   </label>
                 ))}
               </div>
@@ -187,15 +203,18 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
             {/* Review Topics */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[12px] font-bold text-gray-700">Review Topics</span>
-                <span className="text-gray-400 text-xs">∧</span>
+                <span className="text-[13px] font-bold text-gray-700">Review Topics</span>
+                <ChevronUp size={14} className="text-gray-400" />
               </div>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {TOPICS.map(topic => (
-                  <label key={topic} className="flex items-center gap-2.5 cursor-pointer group">
+                  <label
+                    key={topic}
+                    className="flex items-center gap-2.5 cursor-pointer group"
+                    onClick={() => toggleTopic(topic)}
+                  >
                     <div
-                      onClick={() => toggleTopic(topic)}
-                      className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-all ${
+                      className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center transition-all ${
                         selectedTopics.includes(topic)
                           ? 'bg-amber-400 border-amber-400'
                           : 'border-gray-300 group-hover:border-amber-400'
@@ -219,10 +238,9 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
         <div>
           {/* Tabs */}
           <div className="flex items-center gap-2 mb-6 flex-wrap">
-            <span className="text-[13px] font-bold text-gray-600 mr-1">Review Lists</span>
+            <span className="text-[14px] font-bold text-gray-700 mr-1">Review Lists</span>
             {[
               { key: 'all', label: 'All Reviews' },
-              { key: 'photo', label: 'With Photo & Video' },
               { key: 'description', label: 'With Description' },
             ].map(tab => (
               <button
@@ -246,40 +264,45 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
               <p className="text-[13px] text-gray-400">Loading reviews...</p>
             </div>
           ) : paginatedReviews.length === 0 ? (
-            <div className="py-16 text-center border border-dashed border-gray-100 rounded-xl">
-              <p className="text-[13px] text-gray-400 mb-1">No reviews yet.</p>
-              <p className="text-[12px] text-gray-300">Purchase this product to leave a review.</p>
+            <div className="py-16 text-center border border-gray-200 rounded-xl">
+              <p className="text-[14px] text-gray-400 mb-1">No reviews yet.</p>
+              <p className="text-[12px] text-gray-300">Purchase this product to leave the first review.</p>
             </div>
           ) : (
-            <div className="divide-y divide-dashed divide-gray-100">
+            <div className="divide-y divide-gray-100">
               {paginatedReviews.map(review => (
-                <div key={review.id} className="py-5 first:pt-0">
+                <div key={review.id} className="py-6 first:pt-0">
                   {/* Stars */}
                   <div className="flex gap-0.5 mb-2">
                     {[1, 2, 3, 4, 5].map(i => (
-                      <Star key={i} size={15} fill={i <= review.rating ? 'currentColor' : 'none'} className="text-amber-400" />
+                      <Star
+                        key={i}
+                        size={16}
+                        fill={i <= Math.round(review.rating) ? 'currentColor' : 'none'}
+                        className="text-amber-400"
+                      />
                     ))}
                   </div>
 
                   {/* Title */}
-                  <h4 className="font-extrabold text-gray-900 text-[15px] leading-snug mb-1">
+                  <h4 className="font-extrabold text-gray-900 text-[16px] leading-snug">
                     {review.title}
                   </h4>
 
                   {/* Date */}
-                  <p className="text-[11px] text-gray-400 mb-3">{formatDate(review.createdAt)}</p>
+                  <p className="text-[12px] text-gray-400 mt-1 mb-3">{formatDate(review.createdAt)}</p>
 
-                  {/* Body (if any) */}
+                  {/* Body */}
                   {review.body && (
                     <p className="text-[13px] text-gray-500 leading-relaxed mb-4">{review.body}</p>
                   )}
 
-                  {/* User + Helpful row */}
-                  <div className="flex items-center justify-between">
+                  {/* User + Helpful */}
+                  <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[11px] font-bold text-gray-600 overflow-hidden flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[12px] font-bold text-gray-600 overflow-hidden flex-shrink-0">
                         {review.userImage ? (
-                          <img src={review.userImage} alt={review.userName} className="w-full h-full object-cover" />
+                          <img src={review.userImage} alt={review.userName} className="w-full h-full object-cover rounded-full" />
                         ) : (
                           review.userName?.charAt(0)?.toUpperCase() || '?'
                         )}
@@ -287,13 +310,18 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
                       <span className="text-[13px] font-bold text-gray-700">{review.userName}</span>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                       <button
                         onClick={() => handleHelpful(review.id)}
-                        className="flex items-center gap-1.5 text-gray-400 hover:text-gray-700 transition-colors group"
+                        disabled={helpfulClicked.has(review.id)}
+                        className={`flex items-center gap-1.5 transition-colors group ${
+                          helpfulClicked.has(review.id)
+                            ? 'text-amber-500 cursor-default'
+                            : 'text-gray-400 hover:text-gray-700'
+                        }`}
                       >
                         <ThumbsUp size={15} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[12px] font-semibold">{review.helpful || 0}</span>
+                        <span className="text-[13px] font-semibold">{review.helpful || 0}</span>
                       </button>
                       <button className="text-gray-300 hover:text-gray-500 transition-colors">
                         <ThumbsDown size={15} />
@@ -311,15 +339,15 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-700 disabled:opacity-30 transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-700 disabled:opacity-30 transition-all text-sm"
               >
-                <ChevronLeft size={14} />
+                ‹
               </button>
 
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
                 if (totalPages > 7 && p !== 1 && p !== totalPages && (p < page - 1 || p > page + 1)) {
                   if (p === page - 2 || p === page + 2) {
-                    return <span key={p} className="text-gray-300 text-sm px-1">...</span>;
+                    return <span key={p} className="text-gray-300 text-sm px-1">…</span>;
                   }
                   return null;
                 }
@@ -341,9 +369,9 @@ export function ProductReviews({ productId, initialRating = 0, initialReviewCoun
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-700 disabled:opacity-30 transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-700 disabled:opacity-30 transition-all text-sm"
               >
-                <ChevronRight size={14} />
+                ›
               </button>
             </div>
           )}

@@ -7,7 +7,8 @@ import {
 } from 'firebase/firestore';
 import type { StoreSettings } from '@/types';
 
-const SETTINGS_DOC = 'config/storeSettings';
+// Using 'settings/store' — matches Firestore rules: match /settings/{docId}
+const SETTINGS_DOC = 'settings/store';
 
 export const DEFAULT_SETTINGS: StoreSettings = {
   storeName: 'Zest & Partners',
@@ -53,18 +54,9 @@ export const updateStoreSettings = async (
   settings: Partial<StoreSettings>
 ): Promise<void> => {
   const ref = doc(db, SETTINGS_DOC);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      ...DEFAULT_SETTINGS,
-      ...settings,
-      updatedAt: serverTimestamp(),
-    });
-  } else {
-    await setDoc(ref, {
-      ...snap.data(),
-      ...settings,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-  }
+  await setDoc(ref, {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
 };

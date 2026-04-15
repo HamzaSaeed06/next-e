@@ -7,37 +7,42 @@ import {
   updateDoc,
   query,
   where,
-  orderBy,
   increment,
   serverTimestamp,
-  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import type { Review } from '@/types';
 
 const REVIEWS = 'reviews';
 
-// Helper to sanitize Firestore Timestamps for Next.js Server Components
 const serializeReview = (docSnap: any): Review => {
   const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap;
   const serialized = { ...data };
-  
   if (serialized.createdAt?.toMillis) serialized.createdAt = serialized.createdAt.toMillis();
-  
+  if (serialized.createdAt?.seconds) serialized.createdAt = serialized.createdAt.seconds * 1000;
   return { id: docSnap.id, ...serialized } as Review;
 };
 
+// No orderBy in query — avoids requiring a composite Firestore index.
+// Sorting is done client-side after fetch.
 export const getReviewsByProduct = async (
   productId: string,
   sortBy: 'recent' | 'helpful' = 'recent'
 ): Promise<Review[]> => {
   const q = query(
     collection(db, REVIEWS),
-    where('productId', '==', productId),
-    orderBy(sortBy === 'recent' ? 'createdAt' : 'helpful', 'desc')
+    where('productId', '==', productId)
   );
-
   const snap = await getDocs(q);
-  return snap.docs.map(serializeReview);
+  const reviews = snap.docs.map(serializeReview);
+
+  // Sort client-side
+  return reviews.sort((a, b) => {
+    if (sortBy === 'helpful') return (b.helpful || 0) - (a.helpful || 0);
+    // Sort by createdAt descending (recent first)
+    const aTime = typeof a.createdAt === 'number' ? a.createdAt : new Date(a.createdAt as any).getTime();
+    const bTime = typeof b.createdAt === 'number' ? b.createdAt : new Date(b.createdAt as any).getTime();
+    return bTime - aTime;
+  });
 };
 
 export const addReview = async (
