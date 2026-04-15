@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['*.worf.replit.dev', '*.replit.dev'],
+  allowedDevOrigins: [
+    '*.worf.replit.dev',
+    '*.replit.dev',
+    '*.kirk.replit.dev',
+    '*.replit.app',
+  ],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
@@ -12,7 +17,6 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    // Enable server actions for form submissions
     serverActions: { allowedOrigins: ["localhost:5000", process.env.REPLIT_DOMAINS || ""] },
   },
 };
