@@ -244,19 +244,9 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Store Settings</h1>
-          <p className="text-[13px] text-slate-500 mt-1">Manage banners, shipping, social links, ads, and more.</p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white text-[13px] font-bold rounded-lg hover:bg-slate-700 transition-all disabled:opacity-60"
-        >
-          {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Store Settings</h1>
+        <p className="text-[13px] text-slate-500 mt-1">Manage banners, shipping, social links, ads, and more.</p>
       </div>
 
       {/* Tabs */}

@@ -1,7 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, TrendingUp, Clock } from 'lucide-react';
+import { ArrowRight, Sparkles, TrendingUp, Clock, Zap } from 'lucide-react';
 import { ProductCard } from '@/components/product/ProductCard';
+import { HeroBannerCarousel } from '@/components/shop/HeroBannerCarousel';
+import { FlashSaleCountdown } from '@/components/shop/FlashSaleCountdown';
 import {
   getFeaturedProducts,
   getTrendingProducts,
@@ -72,7 +74,7 @@ function ProductGrid({ products }: { products: Product[] }) {
     );
   }
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
       {products.map((p) => (
         <ProductCard key={p.id} product={p} />
       ))}
@@ -107,13 +109,6 @@ export default async function HomePage() {
   const { trending, featured, newArrivals, settings } = await getHomeData();
 
   const activeBanners = settings?.banners?.filter((b) => b.isActive) ?? [];
-  const heroBanner = activeBanners[0] ?? {
-    title: 'Curated Excellence',
-    subtitle: 'Editorial products for the modern lifestyle.',
-    ctaText: 'Explore Collection',
-    ctaLink: '/products',
-    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1400',
-  };
 
   const showFlashBanner = settings?.flashSaleBannerActive !== false;
   const flashTitle = settings?.flashSaleBannerTitle || 'Flash Sale: Up to 70% Off';
@@ -125,64 +120,24 @@ export default async function HomePage() {
     <div className="min-h-screen">
       {/* Announcement Bar */}
       {announcement && (
-        <div className="bg-black text-white text-center text-[12px] font-medium py-2 px-4 tracking-wide">
-          {settings!.announcementBar}
+        <div className="bg-black text-white text-center text-[11px] font-medium py-1.5 px-4 tracking-widest flex items-center justify-center">
+          <span>{settings!.announcementBar}</span>
         </div>
       )}
 
-      {/* Hero Banner */}
-      <section className="relative h-[520px] md:h-[640px] overflow-hidden bg-black">
-        <Image
-          src={heroBanner.imageUrl}
-          alt={heroBanner.title}
-          fill
-          priority
-          className="object-cover opacity-60"
-          sizes="100vw"
-        />
-        <div className="relative h-full flex flex-col items-center justify-center text-center px-6 z-10">
-          <p className="text-[11px] text-white/70 uppercase tracking-[0.4em] font-bold mb-4">
-            New Collection
-          </p>
-          <h1 className="text-5xl md:text-7xl font-bold text-white uppercase tracking-[-0.02em] leading-none mb-6">
-            {heroBanner.title.split(' ').map((word, i) => (
-              <span key={i}>{word}{i < heroBanner.title.split(' ').length - 1 ? <br /> : ''}</span>
-            ))}
-          </h1>
-          <p className="text-[15px] text-white/70 max-w-sm mb-8">
-            {heroBanner.subtitle}
-          </p>
-          <Link
-            href={heroBanner.ctaLink}
-            className="px-8 py-4 bg-white text-black text-[13px] font-bold uppercase tracking-widest hover:bg-white/90 transition-all"
-          >
-            {heroBanner.ctaText}
-          </Link>
-        </div>
-
-        {/* Multiple banner indicators */}
-        {activeBanners.length > 1 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-            {activeBanners.map((_, i) => (
-              <div
-                key={i}
-                className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-white' : 'bg-white/40'}`}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Hero Banner Carousel */}
+      <HeroBannerCarousel banners={activeBanners} />
 
       {/* Categories */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-12 md:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <SectionHeader title="Shop by Category" link="/products" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {categories.map((cat) => (
               <Link
                 key={cat.slug}
                 href={`/products?category=${cat.slug}`}
-                className="group relative aspect-[4/3] overflow-hidden"
+                className="group relative aspect-[4/3] overflow-hidden rounded-sm"
               >
                 <Image
                   src={cat.image}
@@ -192,11 +147,11 @@ export default async function HomePage() {
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                <div className="absolute bottom-4 left-4">
-                  <h3 className="text-white font-bold text-base uppercase tracking-widest">
+                <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+                  <h3 className="text-white font-bold text-sm sm:text-base uppercase tracking-widest">
                     {cat.name}
                   </h3>
-                  <p className="text-white/70 text-[12px] font-medium mt-1">
+                  <p className="text-white/70 text-[11px] sm:text-[12px] font-medium mt-0.5">
                     Shop Now →
                   </p>
                 </div>
@@ -208,26 +163,27 @@ export default async function HomePage() {
 
       {/* Flash Sale Banner */}
       {showFlashBanner && (
-        <section className="py-12 bg-black">
-          <div className="max-w-7xl mx-auto px-6">
+        <section className="py-10 md:py-12 bg-black">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="text-center md:text-left">
                 <div className="flex items-center gap-2 mb-2 justify-center md:justify-start">
-                  <Sparkles className="w-5 h-5 text-white" />
-                  <span className="text-white/70 font-medium text-[13px] uppercase tracking-widest">
+                  <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                  <span className="text-yellow-400 font-bold text-[12px] uppercase tracking-widest">
                     Limited Time
                   </span>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-bold text-white">
+                <h2 className="text-2xl md:text-4xl font-bold text-white">
                   {flashTitle}
                 </h2>
                 <p className="text-white/60 mt-2 text-[14px]">
                   {flashSubtitle}
                 </p>
+                <FlashSaleCountdown />
               </div>
               <Link
                 href="/products?flash=true"
-                className="px-8 py-4 bg-white text-black text-[13px] font-bold uppercase tracking-widest hover:bg-white/90 transition-all flex-shrink-0"
+                className="px-8 py-4 bg-white text-black text-[13px] font-bold uppercase tracking-widest hover:bg-white/90 active:scale-95 transition-all flex-shrink-0"
               >
                 Shop Flash Sale
               </Link>
@@ -237,8 +193,8 @@ export default async function HomePage() {
       )}
 
       {/* Trending */}
-      <section className="py-16 bg-[var(--bg-secondary)]">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-12 md:py-16 bg-[var(--bg-secondary)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <SectionHeader
             title="Trending Now"
             subtitle="Most popular products this week"
@@ -246,12 +202,22 @@ export default async function HomePage() {
             link="/products?sort=popular"
           />
           <ProductGrid products={trending} />
+          {trending.length > 0 && (
+            <div className="text-center mt-8">
+              <Link
+                href="/products?sort=popular"
+                className="inline-flex items-center gap-2 px-6 py-3 border border-black text-black text-[13px] font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-all sm:hidden"
+              >
+                View All <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
       {/* Featured */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-12 md:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <SectionHeader
             title="Featured Products"
             subtitle="Handpicked just for you"
@@ -263,8 +229,8 @@ export default async function HomePage() {
       </section>
 
       {/* New Arrivals */}
-      <section className="py-16 bg-[var(--bg-secondary)]">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-12 md:py-16 bg-[var(--bg-secondary)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <SectionHeader
             title="New Arrivals"
             subtitle="Fresh additions to our collection"
@@ -275,10 +241,30 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Trust badges */}
+      <section className="py-10 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {[
+              { icon: '🚚', title: 'Free Delivery', desc: 'On orders over PKR 5,000' },
+              { icon: '🔄', title: 'Easy Returns', desc: '7-day hassle-free returns' },
+              { icon: '🔒', title: 'Secure Payment', desc: 'COD & card accepted' },
+              { icon: '💬', title: '24/7 Support', desc: 'We reply instantly' },
+            ].map((b) => (
+              <div key={b.title} className="flex flex-col items-center gap-2">
+                <span className="text-3xl">{b.icon}</span>
+                <p className="text-[13px] font-bold text-black">{b.title}</p>
+                <p className="text-[12px] text-gray-500">{b.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Newsletter */}
-      <section className="py-20 bg-black">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
+      <section className="py-16 md:py-20 bg-black">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
             Join the Zest Family
           </h2>
           <p className="text-[var(--neutral-400)] mb-8 max-w-md mx-auto text-[14px]">
@@ -292,7 +278,7 @@ export default async function HomePage() {
             />
             <button
               type="submit"
-              className="px-6 py-3 bg-white text-black font-bold text-[13px] uppercase tracking-widest hover:bg-white/90 transition-all"
+              className="px-6 py-3 bg-white text-black font-bold text-[13px] uppercase tracking-widest hover:bg-white/90 active:scale-95 transition-all"
             >
               Subscribe
             </button>
