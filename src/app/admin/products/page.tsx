@@ -12,7 +12,7 @@ import {
   Trash2, 
   AlertCircle 
 } from 'lucide-react';
-import { getProducts } from '@/lib/services/productService';
+import { getProducts, deleteProduct } from '@/lib/services/productService';
 import { formatPrice } from '@/utils/formatters';
 import type { Product } from '@/types';
 import toast from 'react-hot-toast';
@@ -41,6 +41,17 @@ export default function ProductsPage() {
     p.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Archive "${name}"? It will be hidden from the store.`)) return;
+    try {
+      await deleteProduct(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      toast.success('Product archived');
+    } catch {
+      toast.error('Failed to archive product');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -141,15 +152,17 @@ export default function ProductsPage() {
                         >
                           <ExternalLink size={16} />
                         </Link>
-                        <button 
+                        <Link
+                          href={`/admin/products/${product.id}/edit`}
                           className="p-1.5 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded transition-all"
                           title="Edit Product"
                         >
                           <Edit2 size={16} />
-                        </button>
+                        </Link>
                         <button 
+                          onClick={() => handleDelete(product.id, product.name)}
                           className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-                          title="Delete"
+                          title="Archive Product"
                         >
                           <Trash2 size={16} />
                         </button>

@@ -7,7 +7,8 @@ import {
   getTrendingProducts,
   getNewArrivals,
 } from '@/lib/services/productService';
-import type { Product } from '@/types';
+import { getStoreSettings } from '@/lib/services/storeSettingsService';
+import type { Product, StoreSettings } from '@/types';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -16,29 +17,18 @@ export const metadata: Metadata = {
     'Explore trending, featured, and new arrival products at Zest & Partners.',
 };
 
-// ─── Revalidate every 60 seconds (ISR) ──────────────────────────────────────
 export const revalidate = 60;
 
-// ─── Server-side data fetching ───────────────────────────────────────────────
 async function getHomeData() {
-  const [trending, featured, newArrivals] = await Promise.all([
-    getTrendingProducts(8).catch((e) => {
-      console.error('Trending Products Error:', e.message);
-      return [] as Product[];
-    }),
-    getFeaturedProducts(4).catch((e) => {
-      console.error('Featured Products Error:', e.message);
-      return [] as Product[];
-    }),
-    getNewArrivals(4).catch((e) => {
-      console.error('New Arrivals Error:', e.message);
-      return [] as Product[];
-    }),
+  const [trending, featured, newArrivals, settings] = await Promise.all([
+    getTrendingProducts(8).catch(() => [] as Product[]),
+    getFeaturedProducts(4).catch(() => [] as Product[]),
+    getNewArrivals(4).catch(() => [] as Product[]),
+    getStoreSettings().catch(() => null as StoreSettings | null),
   ]);
-  return { trending, featured, newArrivals };
+  return { trending, featured, newArrivals, settings };
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
 function SectionHeader({
   title,
   subtitle,
@@ -93,37 +83,58 @@ function ProductGrid({ products }: { products: Product[] }) {
 const categories = [
   {
     name: 'Electronics',
-    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600', // fresh tech laptop
+    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600',
     slug: 'electronics',
   },
   {
     name: 'Fashion',
-    image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600', // fashion rack
+    image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600',
     slug: 'fashion',
   },
   {
     name: 'Home & Living',
-    image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600', // beautiful home interior
+    image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600',
     slug: 'home',
   },
   {
     name: 'Beauty',
-    image: 'https://images.unsplash.com/photo-1617897903246-719242758050?w=600', // beauty products skin care
+    image: 'https://images.unsplash.com/photo-1617897903246-719242758050?w=600',
     slug: 'beauty',
   },
 ];
 
-// ─── Page (Server Component) ─────────────────────────────────────────────────
 export default async function HomePage() {
-  const { trending, featured, newArrivals } = await getHomeData();
+  const { trending, featured, newArrivals, settings } = await getHomeData();
+
+  const activeBanners = settings?.banners?.filter((b) => b.isActive) ?? [];
+  const heroBanner = activeBanners[0] ?? {
+    title: 'Curated Excellence',
+    subtitle: 'Editorial products for the modern lifestyle.',
+    ctaText: 'Explore Collection',
+    ctaLink: '/products',
+    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1400',
+  };
+
+  const showFlashBanner = settings?.flashSaleBannerActive !== false;
+  const flashTitle = settings?.flashSaleBannerTitle || 'Flash Sale: Up to 70% Off';
+  const flashSubtitle = settings?.flashSaleBannerSubtitle || 'Grab these deals before they are gone!';
+
+  const announcement = settings?.announcementBarActive && settings?.announcementBar;
 
   return (
     <div className="min-h-screen">
+      {/* Announcement Bar */}
+      {announcement && (
+        <div className="bg-black text-white text-center text-[12px] font-medium py-2 px-4 tracking-wide">
+          {settings!.announcementBar}
+        </div>
+      )}
+
       {/* Hero Banner */}
       <section className="relative h-[520px] md:h-[640px] overflow-hidden bg-black">
         <Image
-          src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1400"
-          alt="Zest & Partners — Hero"
+          src={heroBanner.imageUrl}
+          alt={heroBanner.title}
           fill
           priority
           className="object-cover opacity-60"
@@ -134,20 +145,32 @@ export default async function HomePage() {
             New Collection
           </p>
           <h1 className="text-5xl md:text-7xl font-bold text-white uppercase tracking-[-0.02em] leading-none mb-6">
-            Curated
-            <br />
-            Excellence
+            {heroBanner.title.split(' ').map((word, i) => (
+              <span key={i}>{word}{i < heroBanner.title.split(' ').length - 1 ? <br /> : ''}</span>
+            ))}
           </h1>
           <p className="text-[15px] text-white/70 max-w-sm mb-8">
-            Editorial products for the modern lifestyle.
+            {heroBanner.subtitle}
           </p>
           <Link
-            href="/products"
+            href={heroBanner.ctaLink}
             className="px-8 py-4 bg-white text-black text-[13px] font-bold uppercase tracking-widest hover:bg-white/90 transition-all"
           >
-            Explore Collection
+            {heroBanner.ctaText}
           </Link>
         </div>
+
+        {/* Multiple banner indicators */}
+        {activeBanners.length > 1 && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+            {activeBanners.map((_, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-white' : 'bg-white/40'}`}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Categories */}
@@ -184,32 +207,34 @@ export default async function HomePage() {
       </section>
 
       {/* Flash Sale Banner */}
-      <section className="py-12 bg-black">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="text-center md:text-left">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-5 h-5 text-white" />
-                <span className="text-white/70 font-medium text-[13px] uppercase tracking-widest">
-                  Limited Time
-                </span>
+      {showFlashBanner && (
+        <section className="py-12 bg-black">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <div className="flex items-center gap-2 mb-2 justify-center md:justify-start">
+                  <Sparkles className="w-5 h-5 text-white" />
+                  <span className="text-white/70 font-medium text-[13px] uppercase tracking-widest">
+                    Limited Time
+                  </span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-white">
+                  {flashTitle}
+                </h2>
+                <p className="text-white/60 mt-2 text-[14px]">
+                  {flashSubtitle}
+                </p>
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white">
-                Flash Sale: Up to 70% Off
-              </h2>
-              <p className="text-white/60 mt-2 text-[14px]">
-                Grab these deals before they are gone!
-              </p>
+              <Link
+                href="/products?flash=true"
+                className="px-8 py-4 bg-white text-black text-[13px] font-bold uppercase tracking-widest hover:bg-white/90 transition-all flex-shrink-0"
+              >
+                Shop Flash Sale
+              </Link>
             </div>
-            <Link
-              href="/products?flash=true"
-              className="px-8 py-4 bg-white text-black text-[13px] font-bold uppercase tracking-widest hover:bg-white/90 transition-all"
-            >
-              Shop Flash Sale
-            </Link>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Trending */}
       <section className="py-16 bg-[var(--bg-secondary)]">

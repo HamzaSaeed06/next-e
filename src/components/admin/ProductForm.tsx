@@ -17,39 +17,45 @@ import {
   ChevronUp,
   Columns
 } from 'lucide-react';
-import { createProduct } from '@/lib/services/productService';
+import { createProduct, updateProduct } from '@/lib/services/productService';
 import type { Product, ProductAttribute, ProductVariant } from '@/types';
 import toast from 'react-hot-toast';
 
-export function ProductForm() {
+interface ProductFormProps {
+  initialData?: Product;
+  onSuccess?: () => void;
+}
+
+export function ProductForm({ initialData, onSuccess }: ProductFormProps = {}) {
   const router = useRouter();
+  const isEditing = !!initialData;
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Basic Info State
   const [basicInfo, setBasicInfo] = useState({
-    name: '',
-    slug: '',
-    description: '',
-    brand: '',
-    material: '',
-    category: '',
-    basePrice: 0,
-    baseStock: 0,
+    name: initialData?.name || '',
+    slug: initialData?.slug || '',
+    description: initialData?.description || '',
+    brand: initialData?.brand || '',
+    material: initialData?.material || '',
+    category: initialData?.category || '',
+    basePrice: initialData?.price || 0,
+    baseStock: initialData?.stock || 0,
   });
 
   // Attributes State
-  const [attributes, setAttributes] = useState<ProductAttribute[]>([]);
+  const [attributes, setAttributes] = useState<ProductAttribute[]>(initialData?.attributes || []);
   const [newAttributeName, setNewAttributeName] = useState('');
   const [newAttributeValues, setNewAttributeValues] = useState('');
 
   // Variants State
-  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>(initialData?.variants || []);
   
   // Media State
-  const [mainImages, setMainImages] = useState<string[]>([]);
+  const [mainImages, setMainImages] = useState<string[]>(initialData?.images || []);
   const [newImageUrl, setNewImageUrl] = useState('');
-  const [colorImages, setColorImages] = useState<Record<string, string[]>>({});
-  const [sizeGuide, setSizeGuide] = useState<Record<string, string>>({});
+  const [colorImages, setColorImages] = useState<Record<string, string[]>>(initialData?.colorImages || {});
+  const [sizeGuide, setSizeGuide] = useState<Record<string, string>>(initialData?.sizeGuide || {});
   const [activeImageTab, setActiveImageTab] = useState<'main' | string>('main');
 
   // Helper: Slugify
@@ -162,12 +168,21 @@ export function ProductForm() {
         reviewCount: 0,
       };
 
-      await createProduct(productData);
-      toast.success('Product created successfully!');
-      router.push('/admin/products');
+      if (isEditing && initialData) {
+        await updateProduct(initialData.id, productData);
+        toast.success('Product updated successfully!');
+      } else {
+        await createProduct(productData);
+        toast.success('Product created successfully!');
+      }
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push('/admin/products');
+      }
     } catch (error) {
       console.error(error);
-      toast.error('Failed to create product');
+      toast.error(isEditing ? 'Failed to update product' : 'Failed to create product');
     } finally {
       setIsSubmitting(false);
     }
@@ -504,7 +519,7 @@ export function ProductForm() {
           className="px-10 py-3 bg-orange-500 text-white text-[14px] font-bold rounded shadow-md hover:bg-orange-600 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
         >
           {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-          <span>Save Product</span>
+          <span>{isEditing ? 'Update Product' : 'Save Product'}</span>
         </button>
       </div>
     </form>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductBySlug, getRelatedProducts } from '@/lib/services/productService';
+import { getStoreSettings } from '@/lib/services/storeSettingsService';
 import { discountPercent } from '@/utils/formatters';
 import { ProductDetailClient } from './ProductDetailClient';
 import { ProductGallery } from '@/components/product/ProductGallery';
@@ -44,7 +45,10 @@ export default async function ProductDetailPage({
   const product = await getProductBySlug(slug).catch(() => null);
   if (!product) notFound();
 
-  const related = await getRelatedProducts(product, 4).catch(() => []);
+  const [related, settings] = await Promise.all([
+    getRelatedProducts(product, 4).catch(() => []),
+    getStoreSettings().catch(() => null),
+  ]);
 
   const isFlashSale = !!(product.isFlashSale && product.flashSalePrice);
   const displayPrice = isFlashSale ? product.flashSalePrice! : product.price;
@@ -73,7 +77,16 @@ export default async function ProductDetailPage({
         />
 
         {/* Details Section */}
-        <ProductDetailClient product={product} />
+        <ProductDetailClient
+          product={product}
+          settings={settings ? {
+            deliveryEstimate: settings.deliveryEstimate,
+            returnPolicy: settings.returnPolicy,
+            returnPolicyDays: settings.returnPolicyDays,
+            warrantyPolicy: settings.warrantyPolicy,
+            freeDeliveryThreshold: settings.freeDeliveryThreshold,
+          } : undefined}
+        />
       </div>
 
       {/* Related Products Section */}

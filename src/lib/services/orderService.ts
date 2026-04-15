@@ -41,7 +41,18 @@ export const createOrder = async (payload: CreateOrderPayload): Promise<string> 
   }));
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const shipping = subtotal >= 5000 ? 0 : 299;
+
+  // Try to get dynamic shipping settings, fallback to defaults
+  let freeThreshold = 5000;
+  let shippingCost = 299;
+  try {
+    const { getStoreSettings } = await import('@/lib/services/storeSettingsService');
+    const settings = await getStoreSettings();
+    freeThreshold = settings.freeDeliveryThreshold;
+    shippingCost = settings.standardShippingCost;
+  } catch {}
+
+  const shipping = subtotal >= freeThreshold ? 0 : shippingCost;
   const total = subtotal + shipping - discount;
 
   const docRef = await addDoc(collection(db, ORDERS), {

@@ -243,3 +243,32 @@ export interface GetProductsOptions {
   priceMax?: number;
   pageSize?: number;
 }
+
+export interface Banner {
+  id: string;
+  title: string;
+  subtitle: string;
+  ctaText: string;
+  ctaLink: string;
+  imageUrl: string;
+  isActive: boolean;
+  order: number;
+}
+
+export interface StoreSettings {
+  freeDeliveryThreshold: number;
+  standardShippingCost: number;
+  returnPolicyDays: number;
+  returnPolicy: string;
+  warrantyPolicy: string;
+  deliveryEstimate: string;
+  storeName: string;
+  storeTagline: string;
+  announcementBar: string;
+  announcementBarActive: boolean;
+  banners: Banner[];
+  flashSaleBannerTitle: string;
+  flashSaleBannerSubtitle: string;
+  flashSaleBannerActive: boolean;
+  updatedAt?: Date;
+}

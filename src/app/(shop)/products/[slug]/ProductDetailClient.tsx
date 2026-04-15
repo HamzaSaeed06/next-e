@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Heart, Loader2, Ruler } from 'lucide-react';
+import { Heart, Loader2, Ruler, RotateCcw, ShieldCheck, Truck } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
-import type { Product, ProductVariant } from '@/types';
+import type { Product, ProductVariant, StoreSettings } from '@/types';
 import { formatPrice } from '@/utils/formatters';
 import toast from 'react-hot-toast';
 
-export function ProductDetailClient({ product }: { product: Product }) {
+export function ProductDetailClient({
+  product,
+  settings,
+}: {
+  product: Product;
+  settings?: Pick<StoreSettings, 'deliveryEstimate' | 'returnPolicy' | 'returnPolicyDays' | 'warrantyPolicy' | 'freeDeliveryThreshold'>;
+}) {
   const [isLoading, setIsLoading] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -217,16 +223,42 @@ export function ProductDetailClient({ product }: { product: Product }) {
         </button>
       </div>
 
-      {/* Info Notice */}
-      <div className="pt-4 text-[12px] text-gray-500 flex flex-col gap-1">
-        <p>Delivery: 3-5 Working Days</p>
+      {/* Dynamic Policy Info */}
+      <div className="pt-4 border-t border-gray-100 space-y-3">
+        <div className="flex items-start gap-3">
+          <Truck size={15} className="text-gray-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-[13px] font-semibold text-gray-700">
+              Delivery: {settings?.deliveryEstimate || '3–5 working days'}
+            </p>
+            {settings?.freeDeliveryThreshold && (
+              <p className="text-[12px] text-gray-400 mt-0.5">
+                Free delivery on orders over {formatPrice(settings.freeDeliveryThreshold)}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <RotateCcw size={15} className="text-gray-500 mt-0.5 flex-shrink-0" />
+          <p className="text-[13px] text-gray-600">
+            {settings?.returnPolicy || `${settings?.returnPolicyDays || 30}-day hassle-free returns`}
+          </p>
+        </div>
+        <div className="flex items-start gap-3">
+          <ShieldCheck size={15} className="text-gray-500 mt-0.5 flex-shrink-0" />
+          <p className="text-[13px] text-gray-600">
+            {settings?.warrantyPolicy || '1-year manufacturer warranty'}
+          </p>
+        </div>
+
+        {/* Stock warnings */}
         {((activeVariant?.stock ?? product.stock) <= 5 && (activeVariant?.stock ?? product.stock) > 0) && (
-          <p className="text-red-600 font-bold">
+          <p className="text-red-600 font-bold text-[13px]">
             Only {activeVariant?.stock ?? product.stock} remaining in this selection!
           </p>
         )}
         {(activeVariant?.stock === 0 || (!activeVariant && product.stock === 0)) && (
-          <p className="text-red-600 font-bold uppercase tracking-widest bg-red-50 p-2 rounded text-center">Out of Stock</p>
+          <p className="text-red-600 font-bold uppercase tracking-widest bg-red-50 p-2 rounded text-center text-[12px]">Out of Stock</p>
         )}
       </div>
     </div>
