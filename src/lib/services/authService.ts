@@ -29,6 +29,9 @@ const getErrorMessage = (error: { code?: string; message: string }): string => {
     'auth/wrong-password': 'Incorrect password.',
     'auth/invalid-credential': 'Invalid email or password.',
     'auth/popup-closed-by-user': 'Sign in was cancelled.',
+    'auth/api-key-not-valid': 'Firebase is not configured. Please set up environment variables.',
+    'auth/invalid-api-key': 'Firebase is not configured. Please set up environment variables.',
+    'permission-denied': 'Database permission denied. Please check your Firebase Firestore rules.',
   };
   return map[error.code || ''] || error.message || 'An error occurred.';
 };
@@ -58,37 +61,49 @@ export const signUp = async (
     addresses: [],
   };
 
-  await setDoc(doc(db, 'users', cred.user.uid), userData);
+  try {
+    await setDoc(doc(db, 'users', cred.user.uid), userData);
+  } catch (e: any) {
+    // If Firestore write fails (e.g. rules), user is still authenticated
+    console.error('Could not save user profile to Firestore:', e?.code, e?.message);
+  }
+
   return { ...userData, uid: cred.user.uid } as unknown as User;
 };
 
 export const signIn = async (email: string, password: string): Promise<User> => {
   const cred = await signInWithEmailAndPassword(auth, email, password);
   const userRef = doc(db, 'users', cred.user.uid);
-  const userSnap = await getDoc(userRef);
 
-  if (userSnap.exists()) {
-    await updateDoc(userRef, { lastSeen: serverTimestamp(), isOnline: true });
-  } else {
-    await setDoc(userRef, {
-      uid: cred.user.uid,
-      email: cred.user.email,
-      displayName: cred.user.displayName || '',
-      photoURL: cred.user.photoURL || '',
-      role: 'user',
-      phone: '',
-      createdAt: serverTimestamp(),
-      lastSeen: serverTimestamp(),
-      isOnline: true,
-      loyaltyPoints: 0,
-      totalOrders: 0,
-      totalSpent: 0,
-      preferredCategories: [],
-      addresses: [],
-    });
+  let userData: Record<string, any> = {};
+
+  try {
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      userData = userSnap.data();
+      await updateDoc(userRef, { lastSeen: serverTimestamp(), isOnline: true }).catch(() => {});
+    } else {
+      await setDoc(userRef, {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        displayName: cred.user.displayName || '',
+        photoURL: cred.user.photoURL || '',
+        role: 'user',
+        phone: '',
+        createdAt: serverTimestamp(),
+        lastSeen: serverTimestamp(),
+        isOnline: true,
+        loyaltyPoints: 0,
+        totalOrders: 0,
+        totalSpent: 0,
+        preferredCategories: [],
+        addresses: [],
+      }).catch(() => {});
+    }
+  } catch (e: any) {
+    console.error('Could not load user profile from Firestore:', e?.code, e?.message);
   }
 
-  const userData = userSnap.exists() ? userSnap.data() : {};
   return { ...cred.user, ...userData } as unknown as User;
 };
 
@@ -96,30 +111,36 @@ export const signInWithGoogle = async (): Promise<User> => {
   const provider = new GoogleAuthProvider();
   const cred = await signInWithPopup(auth, provider);
   const userRef = doc(db, 'users', cred.user.uid);
-  const userSnap = await getDoc(userRef);
 
-  if (!userSnap.exists()) {
-    await setDoc(userRef, {
-      uid: cred.user.uid,
-      email: cred.user.email,
-      displayName: cred.user.displayName || 'User',
-      photoURL: cred.user.photoURL || '',
-      role: 'user',
-      phone: cred.user.phoneNumber || '',
-      createdAt: serverTimestamp(),
-      lastSeen: serverTimestamp(),
-      isOnline: true,
-      loyaltyPoints: LOYALTY_SIGNUP,
-      totalOrders: 0,
-      totalSpent: 0,
-      preferredCategories: [],
-      addresses: [],
-    });
-  } else {
-    await updateDoc(userRef, { lastSeen: serverTimestamp(), isOnline: true });
+  let userData: Record<string, any> = {};
+
+  try {
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      await setDoc(userRef, {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        displayName: cred.user.displayName || 'User',
+        photoURL: cred.user.photoURL || '',
+        role: 'user',
+        phone: cred.user.phoneNumber || '',
+        createdAt: serverTimestamp(),
+        lastSeen: serverTimestamp(),
+        isOnline: true,
+        loyaltyPoints: LOYALTY_SIGNUP,
+        totalOrders: 0,
+        totalSpent: 0,
+        preferredCategories: [],
+        addresses: [],
+      }).catch(() => {});
+    } else {
+      userData = userSnap.data();
+      await updateDoc(userRef, { lastSeen: serverTimestamp(), isOnline: true }).catch(() => {});
+    }
+  } catch (e: any) {
+    console.error('Could not load user profile from Firestore:', e?.code, e?.message);
   }
 
-  const userData = userSnap.exists() ? userSnap.data() : {};
   return { ...cred.user, ...userData } as unknown as User;
 };
 
@@ -129,7 +150,7 @@ export const signOut = async (): Promise<void> => {
     await updateDoc(doc(db, 'users', user.uid), {
       isOnline: false,
       lastSeen: serverTimestamp(),
-    });
+    }).catch(() => {});
   }
   await firebaseSignOut(auth);
 };
@@ -170,5 +191,4 @@ export const observeAuth = (callback: (user: User | null) => void) =>
     }
   });
 
-// Re-export error message helper for use in UI
 export { getErrorMessage };
