@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Heart, Loader2, Ruler, RotateCcw, ShieldCheck, Truck } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import type { Product, StoreSettings } from '@/types';
@@ -10,9 +10,11 @@ import toast from 'react-hot-toast';
 export function ProductDetailClient({
   product,
   settings,
+  onDisplayImagesChange,
 }: {
   product: Product;
   settings?: Pick<StoreSettings, 'deliveryEstimate' | 'returnPolicy' | 'returnPolicyDays' | 'warrantyPolicy' | 'freeDeliveryThreshold'>;
+  onDisplayImagesChange?: (images: string[]) => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -49,6 +51,12 @@ export function ProductDetailClient({
       ? activeVariant.images
       : product.images;
   }, [selectedAttributes, product.colorImages, product.images, activeVariant]);
+
+  useEffect(() => {
+    if (onDisplayImagesChange) {
+      onDisplayImagesChange(displayImages.length > 0 ? displayImages : product.images);
+    }
+  }, [displayImages, product.images, onDisplayImagesChange]);
 
   const handleAddToCart = () => {
     const currentStock = activeVariant?.stock ?? product.stock;
@@ -242,6 +250,23 @@ export function ProductDetailClient({
           <Heart size={18} className={isWishlisted ? 'fill-red-500' : ''} />
         </button>
       </div>
+
+      {/* Specifications */}
+      {product.specifications && product.specifications.length > 0 && (
+        <div className="border border-gray-100 rounded-lg overflow-hidden">
+          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest px-4 py-2 bg-gray-50 border-b border-gray-100">
+            Specifications
+          </p>
+          <div className="divide-y divide-gray-50">
+            {product.specifications.map((spec, i) => (
+              <div key={i} className="flex px-4 py-2">
+                <span className="text-[12px] font-semibold text-gray-600 w-36 flex-shrink-0">{spec.key}</span>
+                <span className="text-[12px] text-gray-700">{spec.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Policy Info */}
       <div className="border-t border-gray-100 pt-3 flex flex-col gap-2.5">

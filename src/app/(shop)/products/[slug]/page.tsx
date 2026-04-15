@@ -3,9 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductBySlug, getRelatedProducts } from '@/lib/services/productService';
 import { getStoreSettings } from '@/lib/services/storeSettingsService';
-import { discountPercent } from '@/utils/formatters';
-import { ProductDetailClient } from './ProductDetailClient';
-import { ProductGallery } from '@/components/product/ProductGallery';
+import { ProductPageClient } from './ProductPageClient';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ProductReviews } from '@/components/product/reviews/ProductReviews';
 import { PopularThisWeek } from '@/components/product/PopularThisWeek';
@@ -50,11 +48,6 @@ export default async function ProductDetailPage({
     getStoreSettings().catch(() => null),
   ]);
 
-  const isFlashSale = !!(product.isFlashSale && product.flashSalePrice);
-  const displayPrice = isFlashSale ? product.flashSalePrice! : product.price;
-  const comparePrice = isFlashSale ? product.price : product.comparePrice;
-  const discount = comparePrice ? discountPercent(comparePrice, displayPrice) : 0;
-
   return (
     <div className="max-w-7xl mx-auto px-6 py-6 sm:py-12 bg-white">
       {/* Breadcrumb */}
@@ -66,28 +59,17 @@ export default async function ProductDetailPage({
         <span className="text-black truncate max-w-[200px]">{product.name}</span>
       </nav>
 
-      {/* Main Grid */}
-      <div className="grid lg:grid-cols-[1.2fr_1fr] gap-12 xl:gap-20 mb-24">
-        {/* Gallery Section */}
-        <ProductGallery 
-           images={product.images} 
-           productName={product.name}
-           isFlashSale={isFlashSale || false}
-           discount={discount}
-        />
-
-        {/* Details Section */}
-        <ProductDetailClient
-          product={product}
-          settings={settings ? {
-            deliveryEstimate: settings.deliveryEstimate,
-            returnPolicy: settings.returnPolicy,
-            returnPolicyDays: settings.returnPolicyDays,
-            warrantyPolicy: settings.warrantyPolicy,
-            freeDeliveryThreshold: settings.freeDeliveryThreshold,
-          } : undefined}
-        />
-      </div>
+      {/* Main Grid — gallery + details share state via ProductPageClient */}
+      <ProductPageClient
+        product={product}
+        settings={settings ? {
+          deliveryEstimate: settings.deliveryEstimate,
+          returnPolicy: settings.returnPolicy,
+          returnPolicyDays: settings.returnPolicyDays,
+          warrantyPolicy: settings.warrantyPolicy,
+          freeDeliveryThreshold: settings.freeDeliveryThreshold,
+        } : undefined}
+      />
 
       {/* Related Products Section */}
       {related.length > 0 && (

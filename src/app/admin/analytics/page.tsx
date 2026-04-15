@@ -13,7 +13,7 @@ import {
   ArrowDownRight,
 } from 'lucide-react';
 import { getAllOrders } from '@/lib/services/orderService';
-import { formatPrice } from '@/utils/formatters';
+import { formatPrice, toDate } from '@/utils/formatters';
 import type { Order } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 
@@ -38,11 +38,11 @@ export default function AdminAnalyticsPage() {
 
   const now = new Date();
   const thisMonth = orders.filter((o) => {
-    const d = new Date(o.createdAt as any);
+    const d = toDate(o.createdAt);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
   const lastMonth = orders.filter((o) => {
-    const d = new Date(o.createdAt as any);
+    const d = toDate(o.createdAt);
     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     return d.getMonth() === prev.getMonth() && d.getFullYear() === prev.getFullYear();
   });
@@ -63,7 +63,7 @@ export default function AdminAnalyticsPage() {
     const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
     const month = d.toLocaleDateString('en-US', { month: 'short' });
     const monthOrders = orders.filter((o) => {
-      const od = new Date(o.createdAt as any);
+      const od = toDate(o.createdAt);
       return od.getMonth() === d.getMonth() && od.getFullYear() === d.getFullYear();
     });
     return {
